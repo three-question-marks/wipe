@@ -1,3 +1,24 @@
+function New-ChoiceDescription {
+    param (
+        [string]$Name,
+        [string]$Description = ''
+    )
+
+    return [System.Management.Automation.Host.ChoiceDescription]::new($Name, $Description)
+}
+
+function Prompt-ForChoice {
+    param (
+        [string]$Title,
+        [string]$Prompt = 'Enter your choice:',
+        [System.Management.Automation.Host.ChoiceDescription[]]$Choices,
+        [int]$Default = 0
+    )
+
+    $choice = $host.UI.PromptForChoice($Title, $Prompt, $Choices, $Default)
+    return $choice
+}
+
 $wipe_script_path = 'C:\wipe.ps1'
 $wipe_script = @'
 $namespaceName = "root\cimv2\mdm\dmmap"
@@ -23,18 +44,22 @@ $source = "https://download.anydesk.com/AnyDesk.exe"
 Start-BitsTransfer -Source $source -Destination "C:\Recovery\AutoApply\CustomizationFiles\AnyDesk.exe" `
   -TransferPolicy "Always" -Description "Downloading Anydesk.exe..." -DisplayName "Anydesk" -ErrorAction "Continue"
 
-$release = Invoke-RestMethod 'https://api.github.com/repos/ip7z/7zip/releases/latest'
+$release = Invoke-RestMethod "https://api.github.com/repos/ip7z/7zip/releases/latest"
 $asset = $release.assets | Where-Object {$_.Name -match '^7z[0-9]+\.exe$'}
 $source = $asset.browser_download_url
 Start-BitsTransfer -Source $source -Destination "C:\Recovery\AutoApply\CustomizationFiles\7-Zip.exe" `
   -TransferPolicy "Always" -Description "Downloading 7-Zip..." -DisplayName "7-Zip" -ErrorAction "Continue"
 
-$source = 'https://dl.google.com/chrome/install/latest/chrome_installer.exe'
+$source = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
 Start-BitsTransfer -Source $source -Destination "C:\Recovery\AutoApply\CustomizationFiles\Google Chrome.exe" `
   -TransferPolicy "Always" -Description "Downloading Google Chrome online installer..." -DisplayName "Google Chrome" -ErrorAction "Continue"
 
-Write-Host -NoNewLine 'Press any key to wipe...';
-$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown');
+$choice0 = New-ChoiceDescription -Name Wipe -Description 'Wipe everything'
+$choice1 = New-ChoiceDescription -Name '&Abort' -Description 'Cancel operation'
+$choice = Prompt-ForChoice -Title "If you sure you want to wipe computer, type 'wipe'" -Default 1 -Choices $choice0,$choice1
+if ($choice -eq 1) {
+    exit 1
+}
 
 $wipe_script | Out-File -Force -FilePath $wipe_script_path
 
