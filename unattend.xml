@@ -338,7 +338,7 @@ New-Item -Path $key -ItemType 'Directory' -ErrorAction 'SilentlyContinue';
 Set-ItemProperty -LiteralPath $key -Name 'ConfigureStartPins' -Value $json -Type 'String';
 		</File>
 		<File path="C:\Windows\Setup\Scripts\unattend-01.ps1">
-$customization_files_path = "%SystemDrive%\Recovery\AutoApply\CustomizationFiles"
+$customization_files_path = "C:\Recovery\AutoApply\CustomizationFiles"
 $desktop_path = "$Home\Desktop"
 
 $wsh = New-Object -COMObject WScript.Shell
@@ -350,7 +350,7 @@ $shortcut = $wsh.CreateShortcut("$desktop_path\AnyDesk.lnk")
 $shortcut.TargetPath = "$customization_files_path\AnyDesk.exe"
 $shortcut.Save()
 
-"$customization_files_path\7-Zip.exe" /S
+Start-Process -FilePath "$customization_files_path\7-Zip.exe" -ArgumentList '/S' -Wait -NoNewWindow
 
 PNPUTIL /add-driver "$customization_files_path\Drivers\*.inf" /install /subdirs
 		</File>
