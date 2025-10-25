@@ -41,7 +41,7 @@ function Download-File {
         Start-BitsTransfer -Source $Source -Destination $Destination -TransferPolicy $TransferPolicy `
             -Description $Description -DisplayName $DisplayName
     } else {
-        Write-Information "$DisplayName has already been uploaded - skipping"
+        Write-Host "$DisplayName has already been uploaded - skipping"
     }
 }
 
@@ -70,10 +70,10 @@ $null = New-Item -Path $tmp_dir -ItemType Directory -Force
 $null = New-Item -Path $winre_drivers_dir -ItemType Directory -Force
 $null = New-Item -Path "$customization_files_path\Drivers" -ItemType Directory -Force
 
-Write-Information "Downloading unattend.xml..."
+Write-Host "Downloading unattend.xml..."
 (New-Object System.Net.WebClient).DownloadFile($unattend_xml_source, "$autoapply_dir\unattend.xml")
 
-Write-Information "Downloading installers..."
+Write-Host "Downloading installers..."
 $source = "https://download.anydesk.com/AnyDesk.exe"
 $destination = "$customization_files_path\AnyDesk.exe"
 Download-File -Source $source -Destination $destination -DisplayName "AnyDesk"
@@ -100,7 +100,7 @@ if (($winre_drivers | Measure-Object).Count -gt 0) {
     $recovery_mount_dir = "$tmp_dir\recovery"
     $winre_mount_dir = "$tmp_dir\winre"
 
-    Write-Information "Locating recovery partition..."
+    Write-Host "Locating recovery partition..."
     $reagentc_info = reagentc /info
     if ($reagentc_info -match '.+:\s*Enabled') {
         $matches = ($reagentc_info | Select-String '.+:\s*\\\\\?\\GLOBALROOT\\device\\harddisk(\d+)\\partition(\d+)(.*)').Matches.Groups
@@ -112,7 +112,7 @@ if (($winre_drivers | Measure-Object).Count -gt 0) {
         throw 'Windows RE is disabled!'
     }
 
-    Write-Information "Cleaning up working directories..."
+    Write-Host "Cleaning up working directories..."
     try {
         $null = Dismount-WindowsImage -Path $winre_mount_dir -Discard -ErrorAction Ignore
     }
@@ -122,27 +122,27 @@ if (($winre_drivers | Measure-Object).Count -gt 0) {
     }
     catch {}
 
-    Write-Information "Mounting recovery partition..."
+    Write-Host "Mounting recovery partition..."
     $null = New-Item -Path "$recovery_mount_dir" -ItemType Directory -Force
     $null = Add-PartitionAccessPath -AccessPath "$recovery_mount_dir" -DiskNumber "$disk_number" -PartitionNumber "$partition_number"
 
-    Write-Information "Mounting WinRE image..."
+    Write-Host "Mounting WinRE image..."
     $null = New-Item -Path $winre_mount_dir -ItemType Directory -Force
     $null = Mount-WindowsImage -ImagePath $winre_image_path -Path $winre_mount_dir -Index 1
     
-    Write-Information "Adding drivers to WinRE..."
+    Write-Host "Adding drivers to WinRE..."
     $null = Add-WindowsDriver -Path $winre_mount_dir -Driver $winre_drivers_dir -Recurse
 
-    Write-Information "Applying changes to WinRE image..."
+    Write-Host "Applying changes to WinRE image..."
     $null = Dismount-WindowsImage -Path $winre_mount_dir -Save
 
-    Write-Information "Unmounting recovery partition..."
+    Write-Host "Unmounting recovery partition..."
     $null = Remove-PartitionAccessPath -AccessPath "$recovery_mount_dir" -DiskNumber "$disk_number" -PartitionNumber "$partition_number"
 } else {
-    Write-Information "WinRE drivers not found - skipping"
+    Write-Host "WinRE drivers not found - skipping"
 }
 
-Write-Information "Creating scheduled task to wipe computer..."
+Write-Host "Creating scheduled task to wipe computer..."
 $wipe_script | Out-File -Force -FilePath $wipe_script_path
 
 $action = New-ScheduledTaskAction -Execute "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-ExecutionPolicy Bypass -File ""$wipe_script_path"""
@@ -150,5 +150,5 @@ $principal = New-ScheduledTaskPrincipal -RunLevel Highest -UserId "S-1-5-18"
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DontStopOnIdleEnd -MultipleInstances IgnoreNew
 $task = New-ScheduledTask -Action $action -Principal $principal -Settings $settings
 $null = Register-ScheduledTask wipe -Force -InputObject $task
-Write-Information "Launching scheduled task..."
+Write-Host "Launching scheduled task..."
 Start-ScheduledTask -TaskName wipe
