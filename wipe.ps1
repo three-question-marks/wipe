@@ -1,3 +1,5 @@
+$ErrorActionPreference = "Stop"
+
 function New-ChoiceDescription {
     param (
         [string]$Name,
