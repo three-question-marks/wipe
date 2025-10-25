@@ -74,9 +74,7 @@ if ($choice -eq 1) {
 $winre_drivers = Get-ChildItem -Path $winre_drivers_dir -Attributes 'H,S,!H,!S' -ErrorAction Ignore
 if (($winre_drivers | Measure-Object).Count -gt 0) {
     $recovery_mount_dir = "$tmp_dir\recovery"
-    $winre_image_path = "$recovery_mount_dir\Recovery\WindowsRE\Winre.wim"
     $winre_mount_dir = "$tmp_dir\winre"
-    $recovery_partition = Get-Partition -DiskNumber 0 | Where-Object {$_.Type -eq 'Recovery'}
 
     Write-Information "Cleaning up working directories..."
     try {
@@ -88,9 +86,21 @@ if (($winre_drivers | Measure-Object).Count -gt 0) {
     }
     catch {}
 
+    Write-Information "Locating recovery partition..."
+    $reagentc_info = reagentc /info
+    if ($reagentc_info -match '.+:\s*Enabled') {
+        $matches = ($reagentc_info | Select-String '.+:\s*\\\\\?\\GLOBALROOT\\device\\harddisk(\d+)\\partition(\d+)(.*)').Matches.Groups
+        $disk_number = $matches[1]
+        $partition_number = $matches[2]
+        $winre_image_dir = $matches[3]
+        $winre_image_path = "$recovery_mount_dir$winre_image_dir\Winre.wim"
+    } else {
+        exit 1
+    }
+
     Write-Information "Mounting recovery partition..."
     $null = New-Item -Path "$recovery_mount_dir" -ItemType Directory -Force
-    $null = Add-PartitionAccessPath -AccessPath "$recovery_mount_dir" -DiskNumber 0 -PartitionNumber $recovery_partition.PartitionNumber
+    $null = Add-PartitionAccessPath -AccessPath "$recovery_mount_dir" -DiskNumber "$disk_number" -PartitionNumber "$partition_number"
 
     Write-Information "Mounting WinRE image..."
     $null = New-Item -Path $winre_mount_dir -ItemType Directory -Force
