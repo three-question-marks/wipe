@@ -37,7 +37,7 @@ $instance = Get-CimInstance -Namespace $namespaceName -ClassName $className -Fil
 $session.InvokeMethod($namespaceName, $instance, $methodName, $params)
 '@
 $unattend_xml_source = "https://raw.githubusercontent.com/three-question-marks/wipe/refs/heads/main/unattend.xml"
-$winre_drivers_dir = "$customization_file_path\WinREDrivers"
+$winre_drivers_dir = "$customization_files_path\WinREDrivers"
 
 $null = New-Item -Path "$customization_files_path\Drivers" -ItemType Directory -Force
 $null = New-Item -Path $winre_drivers_dir -ItemType Directory -Force
