@@ -44,8 +44,10 @@ $null = New-Item -Path $tmp_dir -ItemType Directory -Force
 $null = New-Item -Path $winre_drivers_dir -ItemType Directory -Force
 $null = New-Item -Path "$customization_files_path\Drivers" -ItemType Directory -Force
 
+Write-Information "Downloading unattend.xml..."
 (New-Object System.Net.WebClient).DownloadFile($unattend_xml_source, "$autoapply_dir\unattend.xml")
 
+Write-Information "Downloading installers..."
 $source = "https://download.anydesk.com/AnyDesk.exe"
 Start-BitsTransfer -Source $source -Destination "$customization_files_path\AnyDesk.exe" `
   -TransferPolicy "Always" -Description "Downloading Anydesk.exe..." -DisplayName "Anydesk" -ErrorAction "Continue"
@@ -98,6 +100,7 @@ if (($winre_drivers | Measure-Object).Count -gt 0) {
     Write-Information "WinRE drivers not found - skipping"
 }
 
+Write-Information "Creating scheduled task to wipe computer..."
 $wipe_script | Out-File -Force -FilePath $wipe_script_path
 
 $action = New-ScheduledTaskAction -Execute "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-ExecutionPolicy Bypass -File ""$wipe_script_path"""
@@ -105,4 +108,5 @@ $principal = New-ScheduledTaskPrincipal -RunLevel "Highest" -UserId "S-1-5-18"
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DontStopOnIdleEnd -MultipleInstances "Queue" 
 $task = New-ScheduledTask -Action $action -Principal $principal -Settings $settings
 $null = Register-ScheduledTask wipe -Force -InputObject $task
+Write-Information "Launching scheduled task..."
 Start-ScheduledTask -TaskName wipe
