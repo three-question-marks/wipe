@@ -35,23 +35,27 @@ $instance = Get-CimInstance -Namespace $namespaceName -ClassName $className -Fil
 $session.InvokeMethod($namespaceName, $instance, $methodName, $params)
 '@
 $unattend_xml_source = "https://raw.githubusercontent.com/three-question-marks/wipe/refs/heads/main/unattend.xml"
+$autoapply_dir = "C:\Recovery\AutoApply"
+$customization_files_path = "$autoapply_dir\CustomizationFiles"
+$winre_drivers_dir = "$customization_file_path\WinREDrivers"
 
-$null = New-Item -Path "C:\Recovery\AutoApply\CustomizationFiles\Drivers" -ItemType Directory -Force
+$null = New-Item -Path "$customization_files_path\Drivers" -ItemType Directory -Force
+$null = New-Item -Path $winre_drivers_dir -ItemType Directory -Force
 
-(New-Object System.Net.WebClient).DownloadFile($unattend_xml_source, "C:\Recovery\AutoApply\unattend.xml")
+(New-Object System.Net.WebClient).DownloadFile($unattend_xml_source, "$autoapply_dir\unattend.xml")
 
 $source = "https://download.anydesk.com/AnyDesk.exe"
-Start-BitsTransfer -Source $source -Destination "C:\Recovery\AutoApply\CustomizationFiles\AnyDesk.exe" `
+Start-BitsTransfer -Source $source -Destination "$customization_files_path\AnyDesk.exe" `
   -TransferPolicy "Always" -Description "Downloading Anydesk.exe..." -DisplayName "Anydesk" -ErrorAction "Continue"
 
 $release = Invoke-RestMethod "https://api.github.com/repos/ip7z/7zip/releases/latest"
 $asset = $release.assets | Where-Object {$_.Name -match '^7z[0-9]+\.exe$'}
 $source = $asset.browser_download_url
-Start-BitsTransfer -Source $source -Destination "C:\Recovery\AutoApply\CustomizationFiles\7-Zip.exe" `
+Start-BitsTransfer -Source $source -Destination "$customization_files_path\7-Zip.exe" `
   -TransferPolicy "Always" -Description "Downloading 7-Zip..." -DisplayName "7-Zip" -ErrorAction "Continue"
 
 $source = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
-Start-BitsTransfer -Source $source -Destination "C:\Recovery\AutoApply\CustomizationFiles\Google Chrome.exe" `
+Start-BitsTransfer -Source $source -Destination "$customization_files_path\Google Chrome.exe" `
   -TransferPolicy "Always" -Description "Downloading Google Chrome online installer..." -DisplayName "Google Chrome" -ErrorAction "Continue"
 
 $choice0 = New-ChoiceDescription -Name Wipe -Description 'Wipe everything'
@@ -59,6 +63,37 @@ $choice1 = New-ChoiceDescription -Name '&Abort' -Description 'Cancel operation'
 $choice = Prompt-ForChoice -Title "If you sure you want to wipe computer, type 'wipe'" -Default 1 -Choices $choice0,$choice1
 if ($choice -eq 1) {
     exit 1
+}
+
+$winre_drivers = Get-ChildItem -Path $winre_drivers_dir -Attributes 'H,S,!H,!S' -ErrorAction Ignore
+if (($winre_drivers | Measure-Object).Count -gt 0) {
+    $recovery_mount_dir = "$autoapply_dir\recovery"
+    $winre_image_path = "$recovery_mount_dir\Recovery\WindowsRE\Winre.wim"
+    $winre_mount_dir = "$autoapply_dir\winre"
+    $recovery_partition = Get-Partition -DiskNumber 0 | Where-Object {$_.Type -eq 'Recovery'}
+
+    Write-Information "Cleaning up working directories..."
+    $null = Dismount-WindowsImage -Path $winre_mount_dir -Discard -ErrorAction Ignore
+    $null = Remove-PartitionAccessPath -AccessPath "$recovery_mount_dir" -ErrorAction Ignore
+
+    Write-Information "Mounting recovery partition..."
+    $null = New-Item -Path "$recovery_mount_dir" -ItemType Directory -Force
+    $null = Add-PartitionAccessPath -AccessPath "$recovery_mount_dir" -DiskNumber 0 -PartitionNumber $recovery_partition.PartitionNumber
+
+    Write-Information "Mounting WinRE image..."
+    $null = New-Item -Path $winre_mount_dir -ItemType Directory -Force
+    $null = Mount-WindowsImage -ImagePath $winre_image_path -Path $winre_mount_dir -Index 1
+    
+    Write-Information "Adding drivers to WinRE..."
+    $null = Add-WindowsDriver -Path $winre_mount_dir -Driver $winre_drivers_dir -Recurse
+
+    Write-Information "Applying changes to WinRE image..."
+    $null = Dismount-WindowsImage -Path $winre_mount_dir -Save
+
+    Write-Information "Unmounting recovery partition..."
+    $null = Remove-PartitionAccessPath -AccessPath "$recovery_mount_dir"
+} else {
+    Write-Information "WinRE drivers not found - skipping"
 }
 
 $wipe_script | Out-File -Force -FilePath $wipe_script_path
