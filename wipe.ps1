@@ -19,7 +19,9 @@ function Prompt-ForChoice {
     return $choice
 }
 
-$wipe_script_path = 'C:\wipe.ps1'
+$autoapply_dir = "C:\Recovery\AutoApply"
+$customization_files_path = "$autoapply_dir\CustomizationFiles"
+$wipe_script_path = "$autoapply_dir\wipe.ps1"
 $wipe_script = @'
 $namespaceName = "root\cimv2\mdm\dmmap"
 $className = "MDM_RemoteWipe"
@@ -35,8 +37,6 @@ $instance = Get-CimInstance -Namespace $namespaceName -ClassName $className -Fil
 $session.InvokeMethod($namespaceName, $instance, $methodName, $params)
 '@
 $unattend_xml_source = "https://raw.githubusercontent.com/three-question-marks/wipe/refs/heads/main/unattend.xml"
-$autoapply_dir = "C:\Recovery\AutoApply"
-$customization_files_path = "$autoapply_dir\CustomizationFiles"
 $winre_drivers_dir = "$customization_file_path\WinREDrivers"
 
 $null = New-Item -Path "$customization_files_path\Drivers" -ItemType Directory -Force
