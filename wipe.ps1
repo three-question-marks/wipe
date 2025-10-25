@@ -68,7 +68,7 @@ $choice0 = New-ChoiceDescription -Name Wipe -Description 'Wipe everything'
 $choice1 = New-ChoiceDescription -Name '&Abort' -Description 'Cancel operation'
 $choice = Prompt-ForChoice -Title "If you sure you want to wipe computer, type 'wipe'" -Default 1 -Choices $choice0,$choice1
 if ($choice -eq 1) {
-    exit 1
+    throw 'Aborted'
 }
 
 $winre_drivers = Get-ChildItem -Path $winre_drivers_dir -Attributes 'H,S,!H,!S' -ErrorAction Ignore
@@ -95,7 +95,7 @@ if (($winre_drivers | Measure-Object).Count -gt 0) {
         $winre_image_dir = $matches[3]
         $winre_image_path = "$recovery_mount_dir$winre_image_dir\Winre.wim"
     } else {
-        exit 1
+        throw 'Windows RE is disabled!'
     }
 
     Write-Information "Mounting recovery partition..."
