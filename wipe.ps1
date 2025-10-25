@@ -76,16 +76,6 @@ if (($winre_drivers | Measure-Object).Count -gt 0) {
     $recovery_mount_dir = "$tmp_dir\recovery"
     $winre_mount_dir = "$tmp_dir\winre"
 
-    Write-Information "Cleaning up working directories..."
-    try {
-        $null = Dismount-WindowsImage -Path $winre_mount_dir -Discard -ErrorAction Ignore
-    }
-    catch {}
-    try {
-        $null = Remove-PartitionAccessPath -AccessPath "$recovery_mount_dir" -ErrorAction Ignore
-    }
-    catch {}
-
     Write-Information "Locating recovery partition..."
     $reagentc_info = reagentc /info
     if ($reagentc_info -match '.+:\s*Enabled') {
@@ -97,6 +87,16 @@ if (($winre_drivers | Measure-Object).Count -gt 0) {
     } else {
         throw 'Windows RE is disabled!'
     }
+
+    Write-Information "Cleaning up working directories..."
+    try {
+        $null = Dismount-WindowsImage -Path $winre_mount_dir -Discard -ErrorAction Ignore
+    }
+    catch {}
+    try {
+        $null = Remove-PartitionAccessPath -AccessPath "$recovery_mount_dir" -DiskNumber "$disk_number" -PartitionNumber "$partition_number" -ErrorAction Ignore
+    }
+    catch {}
 
     Write-Information "Mounting recovery partition..."
     $null = New-Item -Path "$recovery_mount_dir" -ItemType Directory -Force
@@ -113,7 +113,7 @@ if (($winre_drivers | Measure-Object).Count -gt 0) {
     $null = Dismount-WindowsImage -Path $winre_mount_dir -Save
 
     Write-Information "Unmounting recovery partition..."
-    $null = Remove-PartitionAccessPath -AccessPath "$recovery_mount_dir"
+    $null = Remove-PartitionAccessPath -AccessPath "$recovery_mount_dir" -DiskNumber "$disk_number" -PartitionNumber "$partition_number"
 } else {
     Write-Information "WinRE drivers not found - skipping"
 }
