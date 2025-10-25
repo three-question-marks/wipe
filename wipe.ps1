@@ -19,7 +19,10 @@ function Prompt-ForChoice {
     return $choice
 }
 
-$wipe_script_path = 'C:\wipe.ps1'
+$autoapply_dir = "C:\Recovery\AutoApply"
+$customization_files_path = "$autoapply_dir\CustomizationFiles"
+$tmp_dir = "C:\Recovery\tmp"
+$wipe_script_path = "$tmp_dir\wipe.ps1"
 $wipe_script = @'
 $namespaceName = "root\cimv2\mdm\dmmap"
 $className = "MDM_RemoteWipe"
@@ -35,12 +38,11 @@ $instance = Get-CimInstance -Namespace $namespaceName -ClassName $className -Fil
 $session.InvokeMethod($namespaceName, $instance, $methodName, $params)
 '@
 $unattend_xml_source = "https://raw.githubusercontent.com/three-question-marks/wipe/refs/heads/main/unattend.xml"
-$autoapply_dir = "C:\Recovery\AutoApply"
-$customization_files_path = "$autoapply_dir\CustomizationFiles"
-$winre_drivers_dir = "$customization_file_path\WinREDrivers"
+$winre_drivers_dir = "$customization_files_path\WinREDrivers"
 
-$null = New-Item -Path "$customization_files_path\Drivers" -ItemType Directory -Force
+$null = New-Item -Path $tmp_dir -ItemType Directory -Force
 $null = New-Item -Path $winre_drivers_dir -ItemType Directory -Force
+$null = New-Item -Path "$customization_files_path\Drivers" -ItemType Directory -Force
 
 (New-Object System.Net.WebClient).DownloadFile($unattend_xml_source, "$autoapply_dir\unattend.xml")
 
@@ -67,9 +69,9 @@ if ($choice -eq 1) {
 
 $winre_drivers = Get-ChildItem -Path $winre_drivers_dir -Attributes 'H,S,!H,!S' -ErrorAction Ignore
 if (($winre_drivers | Measure-Object).Count -gt 0) {
-    $recovery_mount_dir = "$autoapply_dir\recovery"
+    $recovery_mount_dir = "$tmp_dir\recovery"
     $winre_image_path = "$recovery_mount_dir\Recovery\WindowsRE\Winre.wim"
-    $winre_mount_dir = "$autoapply_dir\winre"
+    $winre_mount_dir = "$tmp_dir\winre"
     $recovery_partition = Get-Partition -DiskNumber 0 | Where-Object {$_.Type -eq 'Recovery'}
 
     Write-Information "Cleaning up working directories..."
