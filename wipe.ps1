@@ -21,6 +21,30 @@ function Prompt-ForChoice {
     return $choice
 }
 
+function Download-File {
+    param (
+        [string]$Source,
+        [string]$Destination,
+        [switch]$Force = $false,
+        [string]$DisplayName = '',
+        [string]$TransferPolicy = 'Always'
+    )
+
+    $Description = 'This is a file transfer that uses the Background Intelligent Transfer Service (BITS).'
+    if ($DisplayName -ne '') {
+        $Description = "Downloading $DisplayName..."
+    } else {
+        $DisplayName = 'BITS Transfer'
+    }
+    $file_exists = (-Not (Test-Path -LiteralPath $Destination -PathType Leaf))
+    if ($Force -or $file_exists) {
+        Start-BitsTransfer -Source $Source -Destination $Destination -TransferPolicy $TransferPolicy `
+            -Description $Description -DisplayName $DisplayName
+    } else {
+        Write-Information "$DisplayName has already been uploaded - skipping"
+    }
+}
+
 $autoapply_dir = "C:\Recovery\AutoApply"
 $customization_files_path = "$autoapply_dir\CustomizationFiles"
 $tmp_dir = "C:\Recovery\tmp"
@@ -51,22 +75,22 @@ Write-Information "Downloading unattend.xml..."
 
 Write-Information "Downloading installers..."
 $source = "https://download.anydesk.com/AnyDesk.exe"
-Start-BitsTransfer -Source $source -Destination "$customization_files_path\AnyDesk.exe" `
-  -TransferPolicy "Always" -Description "Downloading Anydesk.exe..." -DisplayName "Anydesk" -ErrorAction "Continue"
+$destination = "$customization_files_path\AnyDesk.exe"
+Download-File -Source $source -Destination $destination -DisplayName "AnyDesk"
 
 $release = Invoke-RestMethod "https://api.github.com/repos/ip7z/7zip/releases/latest"
 $asset = $release.assets | Where-Object {$_.Name -match '^7z[0-9]+\.exe$'}
 $source = $asset.browser_download_url
-Start-BitsTransfer -Source $source -Destination "$customization_files_path\7-Zip.exe" `
-  -TransferPolicy "Always" -Description "Downloading 7-Zip..." -DisplayName "7-Zip" -ErrorAction "Continue"
+$destination = "$customization_files_path\7-Zip.exe"
+Download-File -Source $source -Destination $destination -DisplayName "7-Zip"
 
 $source = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
-Start-BitsTransfer -Source $source -Destination "$customization_files_path\Google Chrome.exe" `
-  -TransferPolicy "Always" -Description "Downloading Google Chrome online installer..." -DisplayName "Google Chrome" -ErrorAction "Continue"
+$destination = "$customization_files_path\Google Chrome.exe"
+Download-File -Source $source -Destination $destination -DisplayName "Google Chrome"
 
 $choice0 = New-ChoiceDescription -Name Wipe -Description 'Wipe everything'
 $choice1 = New-ChoiceDescription -Name '&Abort' -Description 'Cancel operation'
-$choice = Prompt-ForChoice -Title "If you sure you want to wipe computer, type 'wipe'" -Default 1 -Choices $choice0,$choice1
+$choice = Prompt-ForChoice -Title "If you ready to wipe computer, type 'wipe'" -Default 1 -Choices $choice0,$choice1
 if ($choice -eq 1) {
     throw 'Aborted'
 }
@@ -122,8 +146,8 @@ Write-Information "Creating scheduled task to wipe computer..."
 $wipe_script | Out-File -Force -FilePath $wipe_script_path
 
 $action = New-ScheduledTaskAction -Execute "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-ExecutionPolicy Bypass -File ""$wipe_script_path"""
-$principal = New-ScheduledTaskPrincipal -RunLevel "Highest" -UserId "S-1-5-18"
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DontStopOnIdleEnd -MultipleInstances "Queue" 
+$principal = New-ScheduledTaskPrincipal -RunLevel Highest -UserId "S-1-5-18"
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DontStopOnIdleEnd -MultipleInstances IgnoreNew
 $task = New-ScheduledTask -Action $action -Principal $principal -Settings $settings
 $null = Register-ScheduledTask wipe -Force -InputObject $task
 Write-Information "Launching scheduled task..."
