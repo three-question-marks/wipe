@@ -79,8 +79,14 @@ if (($winre_drivers | Measure-Object).Count -gt 0) {
     $recovery_partition = Get-Partition -DiskNumber 0 | Where-Object {$_.Type -eq 'Recovery'}
 
     Write-Information "Cleaning up working directories..."
-    $null = Dismount-WindowsImage -Path $winre_mount_dir -Discard -ErrorAction Ignore
-    $null = Remove-PartitionAccessPath -AccessPath "$recovery_mount_dir" -ErrorAction Ignore
+    try {
+        $null = Dismount-WindowsImage -Path $winre_mount_dir -Discard -ErrorAction Ignore
+    }
+    catch {}
+    try {
+        $null = Remove-PartitionAccessPath -AccessPath "$recovery_mount_dir" -ErrorAction Ignore
+    }
+    catch {}
 
     Write-Information "Mounting recovery partition..."
     $null = New-Item -Path "$recovery_mount_dir" -ItemType Directory -Force
