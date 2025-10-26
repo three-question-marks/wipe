@@ -355,6 +355,8 @@ $shortcut.Save()
 Start-Process -FilePath "$customization_files_path\7-Zip.exe" -ArgumentList '/S' -Wait -NoNewWindow
 
 PNPUTIL /add-driver "$customization_files_path\Drivers\*.inf" /install /subdirs
+
+Start-Process -FilePath "msiexec.exe" -ArgumentList "/i","$customization_files_path\GoogleChromeEnterprise.msi","/passive","/norestart" -Wait -NoNewWindow
 		</File>
 		<File path="C:\Windows\Setup\Scripts\Specialize.ps1">
 $scripts = @(

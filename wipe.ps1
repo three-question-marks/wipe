@@ -84,8 +84,8 @@ $source = $asset.browser_download_url
 $destination = "$customization_files_path\7-Zip.exe"
 Download-File -Source $source -Destination $destination -DisplayName "7-Zip"
 
-$source = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
-$destination = "$customization_files_path\Google Chrome.exe"
+$source = "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi"
+$destination = "$customization_files_path\GoogleChromeEnterprise.msi"
 Download-File -Source $source -Destination $destination -DisplayName "Google Chrome"
 
 $choice0 = New-ChoiceDescription -Name Wipe -Description 'Wipe everything'
