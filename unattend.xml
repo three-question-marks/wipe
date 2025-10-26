@@ -338,25 +338,24 @@ New-Item -Path $key -ItemType 'Directory' -ErrorAction 'SilentlyContinue';
 Set-ItemProperty -LiteralPath $key -Name 'ConfigureStartPins' -Value $json -Type 'String';
 		</File>
 		<File path="C:\Windows\Setup\Scripts\unattend-01.ps1">
-$customization_files_path = "C:\Recovery\AutoApply\CustomizationFiles"
-$desktop_path = "$Home\Desktop"
-
-Remove-Item "C:\Users\Public\Desktop\Microsoft Edge.lnk" -Force -ErrorAction Ignore
-
-$wsh = New-Object -COMObject WScript.Shell
-$shortcut = $wsh.CreateShortcut("$desktop_path\Install.lnk")
-$shortcut.TargetPath = "$customization_files_path"
-$shortcut.Save()
-
-$shortcut = $wsh.CreateShortcut("$desktop_path\AnyDesk.lnk")
-$shortcut.TargetPath = "$customization_files_path\AnyDesk.exe"
-$shortcut.Save()
-
-Start-Process -FilePath "$customization_files_path\7-Zip.exe" -ArgumentList "/S" -NoNewWindow
-
-Start-Process -FilePath "PnPUtil.exe" -ArgumentList "/add-driver","$customization_files_path\Drivers\*.inf","/install","/subdirs" -NoNewWindow
-
-Start-Process -FilePath "msiexec.exe" -ArgumentList "/i","$customization_files_path\GoogleChromeEnterprise.msi","/passive","/norestart" -NoNewWindow
+$customization_scripts_dir = "C:\Recovery\AutoApply\CustomizationFiles\Scripts"
+$files = Get-ChildItem -LiteralPath $customization_scripts_dir -File -Attributes 'H,S,!H,!S' -ErrorAction Ignore | Sort-Object Name
+foreach ($file in $files) {
+    $file_name = $file.Name
+    $file_path = "$customization_scripts_dir\$file_name"
+    $file_type = ($file_name | Select-String '.*\.(.+)$').Matches.Groups[1].Value
+    switch -Regex ($file_type) {
+        'bat|cmd' {
+            Start-Process -File $file_path -Wait -NoNewWindow
+        }
+        'ps1' {
+            Start-Process -File 'powershell.exe' -ArgumentList "-ExecutionPolicy","Bypass","-File",$file_path -Wait -NoNewWindow
+        }
+        'reg' {
+            Start-Process -File reg.exe -ArgumentList "import","$file_path" -Wait -NoNewWindow
+       }
+    }
+}
 		</File>
 		<File path="C:\Windows\Setup\Scripts\Specialize.ps1">
 $scripts = @(

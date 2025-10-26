@@ -45,8 +45,18 @@ function Download-File {
     }
 }
 
+function Download-Script {
+    param (
+        [string]$Source,
+        [string]$Destination
+    )
+
+    (New-Object System.Net.WebClient).DownloadFile($Source, $Destination)
+}
+
 $autoapply_dir = "C:\Recovery\AutoApply"
 $customization_files_path = "$autoapply_dir\CustomizationFiles"
+$customization_scripts_dir = "$customization_files_path\Scripts"
 $tmp_dir = "C:\Recovery\tmp"
 $wipe_script_path = "$tmp_dir\wipe.ps1"
 $wipe_script = @'
@@ -69,9 +79,18 @@ $winre_drivers_dir = "$customization_files_path\WinREDrivers"
 $null = New-Item -Path $tmp_dir -ItemType Directory -Force
 $null = New-Item -Path $winre_drivers_dir -ItemType Directory -Force
 $null = New-Item -Path "$customization_files_path\Drivers" -ItemType Directory -Force
+$null = New-Item -Path "$customization_scripts_dir" -ItemType Directory -Force
 
 Write-Host "Downloading unattend.xml..."
-(New-Object System.Net.WebClient).DownloadFile($unattend_xml_source, "$autoapply_dir\unattend.xml")
+Download-Script -Source $unattend_xml_source -Destination "$autoapply_dir\unattend.xml"
+
+Write-Host "Downloading scripts..."
+$response = Invoke-RestMethod "https://api.github.com/repos/three-question-marks/wipe/contents/Scripts"
+$files = $response | Where-Object {$_.type -eq 'file'}
+foreach ($file in $files) {
+    $file_name = $file.name
+    Download-Script -Source $file.download_url -Destination "$customization_scripts_dir\$file_name"
+}
 
 Write-Host "Downloading installers..."
 $source = "https://download.anydesk.com/AnyDesk.exe"
